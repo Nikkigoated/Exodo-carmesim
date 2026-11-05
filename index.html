@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#000000">
+  <title>Mensagens</title>
+  <style>
+    :root {
+      --bg: #000;
+      --phone: #101114;
+      --panel: #17181c;
+      --muted: #777b84;
+      --text: #f1f1f3;
+      --incoming: #292b31;
+      --outgoing: #174d3d;
+      --accent: #63a88e;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--bg); scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--text);
+      background: #000;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100%;
+    }
+    .scroll-track {
+      position: relative;
+      min-height: 100vh;
+      padding: 12vh 16px 18vh;
+    }
+    .phone-stage {
+      position: sticky;
+      top: 50%;
+      transform: translateY(-50%);
+      height: min( min(78vh, 760px), 820px);
+      min-height: 480px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      pointer-events: none;
+      z-index: 2;
+      margin-bottom: calc(-1 * min( min(78vh, 760px), 820px));
+    }
+    .phone {
+      pointer-events: auto;
+      width: min( min(390px, 92vw), 430px);
+      height: 100%;
+      max-height: 760px;
+      min-height: 480px;
+      border: 1px solid #34363d;
+      border-radius: 38px;
+      background: var(--phone);
+      box-shadow: 0 0 0 7px #080809, 0 25px 100px rgba(0,0,0,.85);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .status {
+      height: 34px;
+      flex: 0 0 34px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 23px;
+      color: #ddd;
+      font-size: 11px;
+      letter-spacing: .2px;
+    }
+    .island {
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 82px;
+      height: 20px;
+      background: #030303;
+      border-radius: 20px;
+    }
+    .chat-header {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 13px 17px 15px;
+      background: #141519;
+      border-bottom: 1px solid #292a30;
+    }
+    .back { color: #a8cbbb; font-size: 23px; line-height: 1; }
+    .avatar {
+      width: 37px; height: 37px; border-radius: 50%;
+      background: #303239; flex: 0 0 37px;
+      display: grid; place-items: center; overflow: hidden;
+    }
+    .avatar svg { width: 23px; height: 23px; fill: #a7a9b0; }
+    .contact { min-width: 0; flex: 1; }
+    .contact strong { display: block; font-size: 14px; font-weight: 600; }
+    .contact span { display: block; color: #888b93; font-size: 11px; margin-top: 3px; }
+    .header-icons { color: #a5a7ad; letter-spacing: 8px; font-size: 16px; white-space: nowrap; }
+    .chat-window {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: auto;
+      padding: 14px 12px 12px;
+      background:
+        radial-gradient(ellipse at 50% 45%, rgba(255,255,255,.025), transparent 70%),
+        #101114;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .messages {
+      display: flex;
+      flex: 0 0 auto;
+      flex-direction: column;
+      gap: 8px;
+      padding-bottom: 12px;
+    }
+    .chat-window {
+      scrollbar-width: thin;
+      scrollbar-color: #454850 transparent;
+    }
+    .chat-window::-webkit-scrollbar { width: 5px; }
+    .chat-window::-webkit-scrollbar-track { background: transparent; }
+    .chat-window::-webkit-scrollbar-thumb {
+      background: #454850;
+      border-radius: 8px;
+    }
+    .day-label {
+      align-self: center;
+      color: #92959d;
+      font-size: 10px;
+      background: #202126;
+      padding: 5px 10px;
+      border-radius: 10px;
+      margin: 2px 0 8px;
+    }
+    .message {
+      max-width: 82%;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      opacity: 0;
+      transform: translateY(13px);
+      filter: blur(2px);
+      transition: opacity .55s ease, transform .55s ease, filter .55s ease;
+      will-change: opacity, transform;
+    }
+    .message.visible { opacity: 1; transform: translateY(0); filter: blur(0); }
+    .message.left { align-self: flex-start; }
+    .message.right { align-self: flex-end; }
+    .sender {
+      font-size: 10px;
+      color: #9ca1aa;
+      padding: 0 5px;
+      margin-bottom: 1px;
+    }
+    .bubble {
+      font-size: 12px;
+      line-height: 1.42;
+      padding: 8px 11px 6px;
+      border-radius: 14px;
+      color: #f1f1f2;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+    .left .bubble { background: var(--incoming); border-top-left-radius: 5px; }
+    .right .bubble { background: var(--outgoing); border-top-right-radius: 5px; }
+    .time {
+      font-size: 9px;
+      color: rgba(235,238,240,.55);
+      text-align: right;
+      margin-top: 3px;
+    }
+    .composer {
+      height: 49px;
+      flex: 0 0 49px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px 10px;
+      background: #141519;
+      border-top: 1px solid #26272c;
+    }
+    .composer .plus { color: #9ba0a8; font-size: 21px; }
+    .fake-input {
+      height: 31px; flex: 1; border: 1px solid #34363d; border-radius: 18px;
+      color: #737780; font-size: 11px; padding: 8px 12px;
+    }
+    .send { color: #8cbda9; font-size: 17px; }
+    .scroll-cue {
+      position: absolute;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #666;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      animation: pulse 1.8s infinite;
+      white-space: nowrap;
+    }
+    @keyframes pulse { 0%,100% { opacity: .35; } 50% { opacity: .9; } }
+    .story {
+      position: relative;
+      z-index: 1;
+      width: min(390px, 92vw);
+      margin: 0 auto;
+      pointer-events: none;
+    }
+    .story-spacer { height: 95vh; }
+    .story-end { height: 100vh; }
+    .end-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      background: #000;
+      display: grid;
+      place-items: center;
+      padding: 25px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 1.2s ease, visibility 1.2s ease;
+      text-align: center;
+    }
+    .end-screen.show { opacity: 1; visibility: visible; }
+    .end-content { max-width: 320px; }
+    .end-icon { color: #555; font-size: 27px; margin-bottom: 20px; }
+    .end-title { color: #d6d6d8; font-size: 14px; letter-spacing: .4px; }
+    .end-sub { color: #555861; font-size: 11px; margin-top: 10px; line-height: 1.6; }
+    @media (max-height: 620px) {
+      .phone-stage { height: 88vh; min-height: 420px; margin-bottom: -88vh; }
+      .phone { min-height: 420px; }
+      .chat-window { min-height: 0; }
+      .message { gap: 2px; }
+      .messages { gap: 5px; }
+      .bubble { padding: 6px 9px 5px; font-size: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="scroll-track">
+    <div class="phone-stage">
+      <section class="phone" aria-label="Conversa de mensagens">
+        <div class="status"><span>16:42</span><span>●  ▮▮  ▰</span></div>
+        <div class="island"></div>
+        <header class="chat-header">
+          <span class="back">‹</span>
+          <div class="avatar" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 12a4.2 4.2 0 1 0 0-8.4A4.2 4.2 0 0 0 12 12Zm0 2c-4.1 0-7.4 2.1-7.4 4.7V21h14.8v-2.3c0-2.6-3.3-4.7-7.4-4.7Z"/></svg>
+          </div>
+          <div class="contact"><strong>Daisuke</strong><span>online</span></div>
+          <div class="header-icons">⌕ ⋮</div>
+        </header>
+        <div class="chat-window">
+          <div class="messages" id="messages">
+            <div class="day-label">Hoje</div>
+            <div class="message left"><div class="sender">Lavia</div><div class="bubble">você tá acordado?<div class="time">16:42</div></div></div>
+            <div class="message right"><div class="sender">Daisuke</div><div class="bubble">infelizmente<div class="time">16:42</div></div></div>
+            <div class="message right"><div class="bubble">aconteceu alguma coisa?<div class="time">16:42</div></div></div>
+            <div class="message left"><div class="sender">Lavia</div><div class="bubble">tava pensando no que a gente conversou ontem<div class="time">16:43</div></div></div>
+            <div class="message left"><div class="bubble">não dá mais pra ficar esperando eles decidirem o que fazer<div class="time">16:43</div></div></div>
+            <div class="message right"><div class="sender">Daisuke</div><div class="bubble">finalmente<div class="time">16:43</div></div></div>
+            <div class="message right"><div class="bubble">achei que você ia desistir<div class="time">16:43</div></div></div>
+            <div class="message left"><div class="sender">Lavia</div><div class="bubble">desistir? depois de tudo?<div class="time">16:44</div></div></div>
+            <div class="message left"><div class="bubble">o Arthur quer que a gente espere autorização pra cada passo<div class="time">16:44</div></div></div>
+            <div class="message left"><div class="bubble">até lá o mundo já acabou umas três vezes<div class="time">16:44</div></div></div>
+            <div class="message right"><div class="sender">Daisuke</div><div class="bubble">ele não é o único problema<div class="time">16:45</div></div></div>
+            <div class="message right"><div class="bubble">se a Agatha Volkomenn tivesse feito o trabalho dela direito, a gente nem estaria nessa situação<div class="time">16:45</div></div></div>
+            <div class="message left"><div class="sender">Lavia</div><div class="bubble">NÃO COMEÇA<div class="time">16:45</div></div></div>
+            <div class="message left"><div class="bubble">eu penso nessa mulher e minha pressão sobe<div class="time">16:45</div></div></div>
+            <div class="message right"><div class="sender">Daisuke</div><div class="bubble">ela teve todas as oportunidades pra impedir isso<div class="time">16:46</div></div></div>
+            <div class="message right"><div class="bubble">e agora todo mundo tem que lidar com as consequências das decisões dela<div class="time">16:46</div></div></div>
+            <div class="message right"><div class="bubble">genial<div class="time">16:46</div></div></div>
+            <div class="message left"><div class="sender">Lavia</div><div class="bubble">o pior é que ainda tem gente que defende<div class="time">16:47</div></div></div>
+            <div class="message left"><div class="bubble">como se ela não tivesse responsabilidade nenhuma pelo que aconteceu<div class="time">16:47</div></div></div>
+            <div class="message right"><div class="sender">Daisuke</div><div class="bubble">enfim<div class="time">16:48</div></div></div>
+            <div class="message right"><div class="bubble">sobre o plano<div class="time">16:48</div></div></div>
+            <div class="message right"><div class="bubble">você tem certeza de que podemos confiar nas informações?<div class="time">16:48</div></div></div>
+            <div class="message left"><div class="sender">Lavia</div><div class="bubble">tenho<div class="time">16:48</div></div></div>
+            <div class="message left"><div class="bubble">conferi tudo duas vezes<div class="time">16:48</div></div></div>
+            <div class="message left"><div class="bubble">não podemos deixar nada pra improvisar dessa vez<div class="time">16:48</div></div></div>
+            <div class="message right"><div class="sender">Daisuke</div><div class="bubble">e o Arthur?<div class="time">16:49</div></div></div>
+            <div class="message left"><div class="sender">Lavia</div><div class="bubble">ele não pode descobrir<div class="time">16:49</div></div></div>
+            <div class="message left"><div class="bubble">nem ele, nem Dante, nem ninguém que esteja trabalhando diretamente com eles<div class="time">16:49</div></div></div>
+            <div class="message left"><div class="bubble">se perceberem o que estamos fazendo, vão tentar impedir<div class="time">16:49</div></div></div>
+            <div class="message right"><div class="sender">Daisuke</div><div class="bubble">principalmente se descobrirem antes da hora<div class="time">16:50</div></div></div>
+            <div class="message right"><div class="bubble">precisamos fazer parecer que está tudo normal<div class="time">16:50</div></div></div>
+            <div class="message left"><div class="sender">Lavia</div><div class="bubble">exatamente<div class="time">16:51</div></div></div>
+            <div class="message left"><div class="bubble">nada de mensagens nos canais oficiais<div class="time">16:51</div></div></div>
+            <div class="message left"><div class="bubble">nada de envolver outras pessoas<div class="time">16:51</div></div></div>
+            <div class="message left"><div class="bubble">e, pelo amor de deus, não comenta isso com ninguém<div class="time">16:51</div></div></div>
+            <div class="message right"><div class="sender">Daisuke</div><div class="bubble">eu sei guardar segredo, Lavia<div class="time">16:51</div></div></div>
+            <div class="message right"><div class="bubble">se isso der certo, talvez ainda exista uma chance de impedir o que vem pela frente<div class="time">16:54</div></div></div>
+            <div class="message left"><div class="sender">Lavia</div><div class="bubble">vai dar certo<div class="time">16:54</div></div></div>
+            <div class="message left"><div class="bubble">não chegamos até aqui pra deixar tudo acabar por causa da incompetência dos outros<div class="time">16:54</div></div></div>
+            <div class="message right"><div class="sender">Daisuke</div><div class="bubble">e se o Arthur descobrir?<div class="time">16:55</div></div></div>
+            <div class="message left"><div class="sender">Lavia</div><div class="bubble">então ele vai descobrir quando já for tarde demais pra nos impedir.<div class="time">16:55</div></div></div>
+            <div class="message right"><div class="sender">Daisuke</div><div class="bubble">certo<div class="time">16:56</div></div></div>
+            <div class="message right"><div class="bubble">amanhã a gente conversa pessoalmente<div class="time">16:56</div></div></div>
+            <div class="message left"><div class="sender">Lavia</div><div class="bubble">e apaga essa conversa<div class="time">16:56</div></div></div>
+            <div class="message right"><div class="sender">Daisuke</div><div class="bubble">já ia fazer isso<div class="time">16:57</div></div></div>
+            <div class="message left"><div class="sender">Lavia</div><div class="bubble">Daisuke.<div class="time">16:57</div></div></div>
+            <div class="message right"><div class="sender">Daisuke</div><div class="bubble">tá bom KKKKKK<div class="time">16:57</div></div></div>
+          </div>
+        </div>
+        <div class="composer"><span class="plus">＋</span><div class="fake-input">Mensagem</div><span class="send">➤</span></div>
+      </section>
+      <div class="scroll-cue">role para ler a conversa</div>
+    </div>
+    <div class="story" aria-hidden="true">
+      <div class="story-spacer"></div>
+      <div class="story-spacer"></div>
+      <div class="story-spacer"></div>
+      <div class="story-spacer"></div>
+      <div class="story-spacer"></div>
+      <div class="story-spacer"></div>
+      <div class="story-spacer"></div>
+      <div class="story-spacer"></div>
+      <div class="story-spacer"></div>
+      <div class="story-spacer"></div>
+      <div class="story-end"></div>
+    </div>
+  </main>
+  <div class="end-screen" id="endScreen">
+    <div class="end-content">
+      <div class="end-icon">▧</div>
+      <div class="end-title">Esta conversa não está mais disponível.</div>
+      <div class="end-sub">As mensagens foram apagadas.</div>
+    </div>
+  </div>
+  <script>
+    const messages = [...document.querySelectorAll('.message')];
+    const endScreen = document.getElementById('endScreen');
+    const scrollCue = document.querySelector('.scroll-cue');
+
+    // As mensagens entram suavemente à medida que a página é rolada.
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15 });
+
+    messages.forEach(message => observer.observe(message));
+
+    // Mostra o aviso final quando o jogador chega ao fim da conversa.
+    const endObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          endScreen.classList.add('show');
+          scrollCue.style.opacity = '0';
+        }
+      });
+    }, { threshold: 0.35 });
+
+    endObserver.observe(document.querySelector('.story-end'));
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 80) scrollCue.style.opacity = '0';
+    }, { passive: true });
+  </script>
+</body>
+</html>
